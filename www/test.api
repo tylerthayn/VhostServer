@@ -1,0 +1,10 @@
+
+
+module.exports = (req, res, next, server) => {
+	server.Render('test.tpl', {title: 'Test Title!!'}, (error, html) => {
+		if (error) {
+			return next(error)
+		}
+		res.send(html)
+	})
+}
