@@ -4,13 +4,12 @@
 
 	let baseDir = document.currentScript.getAttribute('src').split('/').reverse().slice(1).reverse().join('/')
 	let libs = document.currentScript.hasAttribute('data-libs') ? document.currentScript.getAttribute('data-libs').replace('std','jquery,jquery-ui,bootstrap,notify').split(',') : []
-	let main = document.currentScript.hasAttribute('data-main') ? document.currentScript.getAttribute('data-main') : 'index'
+	let main = document.currentScript.hasAttribute('data-main') ? document.currentScript.getAttribute('data-main') : ''
 
 	require = {
 		baseUrl: baseDir,
 		paths: {
-			'@css': baseDir+'/../styles',
-			'@Maps': baseDir+'./../Maps'
+			'@css': baseDir+'/../styles'
 		},
 		map: {
 			'*': {
@@ -32,7 +31,7 @@
 		deps: [
 			'style!@css/org.tts',
 			'@js/core',
-			'lodash.tts'
+			'org.tts.js.lodash'
 		],
 		skipDataMain: true
 	}
@@ -46,6 +45,9 @@
 				main = main.replace(path, paths[path])
 			})
 			InsertScript(baseDir+'/'+main+'.js')
+			//if (main != '') {
+			//	InsertScript(main)
+			//}
 		})
 	})
 })()

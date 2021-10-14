@@ -12,35 +12,25 @@ let Uuid = () => {return uuid(uuid('ttscloud.net'))}
 function Server () {
 	this.options = typeof arguments[0] === 'undefined' ? require('./config') : typeof arguments[0] === 'string' ? require(arguments[0]) : arguments[0]
 	this.servers = {}
-	this.typeHandlers = {}
+	//this.typeHandlers = {}
 	this.hosts = []
 	Object.defineProperty(this.hosts,'ports',{enumerable:true,get:()=>{let ports=[].concat(this.options.ports || []);this.hosts.forEach(host=>{'*'!=host.port&&!ports.includes(host.port)&&ports.push(host.port)});return ports}})
 
-	this.options.typeHandlers.forEach(handler => {
-		this.TypeHandler(handler[0], require('./lib/TypeHandlers/'+handler[1])(this))
-	})
+	//this.options.typeHandlers.forEach(handler => {this.TypeHandler(handler[0], require('./lib/TypeHandlers/'+handler[1])(this))})
+	this.options.vhosts.sort(Sort).forEach(vhost => {this.Vhost(vhost)})
+	jSmart.prototype.getTemplate = jSmart.prototype.getFile = (name) => {return Fs.readFileSync(Resolve(this.options.templatesDir, name), 'utf8')}
 
-	Fs.readdirSync(Resolve(this.options.vhostsPath), {withFileTypes: true}).forEach(entry => {
-		if (entry.isFile() && entry.name.endsWith('.js') && !entry.name.startsWith('!')) {
-			this.Vhost(Resolve(this.options.vhostsPath, entry.name))
-		}
-	})
-
-	jSmart.prototype.getTemplate = jSmart.prototype.getFile = (name) => {
-		return Fs.readFileSync(Resolve(this.options.templatesDir, name), 'utf8')
-	}
-
-
+	log(this.hosts.map(h=>{return h.name}))
 	return this
 }
 
-Server.prototype.log = log
-Server.prototype.Error = log
+//Server.prototype.log = log
+Server.prototype.Error = console.error //Server.prototype.ErrorHandler
 
-Server.prototype.ErrorHandler = function (error) {
-	log('error!!!!')
-	logj(error)
-}
+//Server.prototype.ErrorHandler = function (error) {
+//	log('error!!!!')
+//	log(error)
+//}
 
 Server.prototype.Handler = function (req, res) {
 	let $this = this
@@ -51,7 +41,7 @@ Server.prototype.Handler = function (req, res) {
 		if (handler instanceof Function) {
 			handler(req, res, Handle)
 		} else {
-			finalhandler(req, res, {onerror: $this.ErrorHandler})(err)
+			finalhandler(req, res, {onerror: $this.Error})(err)
 		}
 	}
 
@@ -85,7 +75,7 @@ Server.prototype.Start = function () {
 	let ports = this.hosts.ports.length == 0 ? [0] : this.hosts.ports
 	ports.forEach(port => {
 		let server = this.servers[port.toString()] = http.createServer(this.Handler.bind(this))
-		server.listen(port, () => {this.log('Server started @ port ' + port)})
+		server.listen(port, () => {console.log('Server started @ port ' + port)})
 	})
 	return this
 }
@@ -127,40 +117,40 @@ Server.prototype.Stop = function () {
 Server.prototype.Use = function (handler, host, port = '*', priority = 5, enabled = true) {
 	let vhost = handler instanceof Vhost ? handler : new Vhost(handler, host, port, priority, enabled)
 	this.hosts.push(vhost)
-	this.hosts.sort((a, b) => {
-		if (a.priority > b.priority) return 1
-		if (a.priority < b.priority) return -1
-		return 0
-	})
+	this.hosts.sort(Sort)
 	return vhost.id
 }
 
+/*
 Server.prototype.TypeHandler = function () {
 	let types = Array.isArray(_.first(arguments)) ? _.first(arguments) : [_.first(arguments)]
 	types.forEach(type => {
 		this.typeHandlers[type] = _.last(arguments)
 	})
 }
+*/
 
-Server.prototype.Vhost = function (path) {
-	let vhost = require(path)
-	try {vhost.handler = require(vhost.handler)(this, vhost.options || {})} catch (e) {this.ErrorHandler(e);return undefined}
+Server.prototype.Vhost = function (vhost) {
+	console.log('Loading vhost...'+vhost.name)
+	try {vhost.handler = require(vhost.handler)(this, vhost.options || {})} catch (e) {this.Error(e);return undefined}
 	if (!vhost.handler instanceof Function) {this.ErrorHandler(new Error('handler must be an instanceof Function'))}
 	if (typeof vhost.id === 'undefined') {vhost.id = Uuid()}
 	if (typeof vhost.host === 'string') {vhost.host = new RegExp('^' + vhost.host.trim().replace(/\./g, '\\.').replace(/\*/g, '.*') + '$')}
 	if (typeof vhost.port === 'string') {vhost.port = parseInt(vhost.port)}
 	this.hosts.push(vhost)
-	this.hosts.sort((a, b) => {
-		if (a.priority > b.priority) return 1
-		if (a.priority < b.priority) return -1
-		return 0
-	})
+	this.hosts.sort(Sort)
 	return vhost.id
+}
+
+function Sort (a, b) {
+	if (a.priority > b.priority) return 1
+	if (a.priority < b.priority) return -1
+	return 0
 }
 
 
 if (require.main === module) {
-	let server = new Server(require(process.argv.length > 2 ? process.argv[2] : './config'))
+	let server = new Server(require(process.argv.length > 2 ? process.argv[2] : '../config.js'))
 	server.Start()
 	global.Server = server
 } else {

@@ -1,6 +1,7 @@
-let Resolve = require('path').resolve
 let express = require('express')
-let Static = require('../lib/Static')
+let Resolve = require('path').resolve
+let ServeIndex = require('serve-index')
+let ServeStatic = require('serve-static')
 
 module.exports = (server, options) => {
 	let app = module.exports = express()
@@ -10,8 +11,10 @@ module.exports = (server, options) => {
 			res.send(html)
 		})
 	})
-	app.use('/c', new Static(Resolve('C:/'), {filter: Filter, view: 'details'}, server))
-	app.use('/d', new Static(Resolve('D:/'), {filter: Filter}, server))
+
+	app.use('/d', ServeStatic(Resolve('D:/'), {index: ['index.html']}), ServeIndex(Resolve('D:'), {icons: true}))
+	app.use('/c', ServeStatic(Resolve('C:/'), {index: ['index.html']}), ServeIndex(Resolve('C:'), {icons: true}))
+
 	return app
 }
 

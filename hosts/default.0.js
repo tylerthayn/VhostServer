@@ -1,7 +1,7 @@
 let express = require('express')
-let handlers = {
-	api: require('../lib/TypeHandlers/api')
-}
+//let handlers = {
+//	api: require('../lib/TypeHandlers/api')
+//}
 
 module.exports = (server, options) => {
 

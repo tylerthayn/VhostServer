@@ -1,10 +1,12 @@
 let _ = require('org.tts.js.lodash')
+let express = require('express')
 let Fs = require('fs')
 let Path = require('path')
 let ServeStatic = require('serve-static')
 let ServeIndex = require('./serve-index')
 
 let defaults = {
+	cacheControl: false,
 	icons: true,
 	index: ['index.html', 'index.htm']
 }
@@ -17,7 +19,10 @@ module.exports = function Static (root, opts, server) {
 	function HandleDirectory (req, res, next) {
 		let path = Path.resolve(root, req.path == '/' ? '' : decodeURIComponent(req.path).replace(/^\//, ''))
 		Fs.stat(path, (error, stats) => {
-			if (error) {return next(error)}
+			if (error) {
+				if (error.code == 'ENOENT') {return next()}
+				return next(error)
+			}
 			if (stats.isDirectory()) {
 				return IndexExists(path, _.clone(options.index), index => {
 					if (index == null) {
@@ -36,6 +41,7 @@ module.exports = function Static (root, opts, server) {
 
 	function HandleTypeHandlers (req, res, next) {
 		if (Reflect.has(server.typeHandlers, Path.extname(req.path))) {
+log('TypeHandler')
 			req.root = root
 			return server.typeHandlers[Path.extname(req.path)](req, res, next)
 		}
@@ -48,9 +54,13 @@ module.exports = function Static (root, opts, server) {
 			HandleDirectory(req, res, error => {
 				if (error) {
 					server.Error(error)
-					return next()
+					//return next()
 				}
-				staticServe(req, res, next)
+log(root+'::'+req.path)
+				staticServe(req, res, error => {
+					log(error)
+					next()
+				})
 			})
 		})
 	}
@@ -67,7 +77,6 @@ function IndexExists (dir, indexes, cb) {
 	function Exists () {
 		if (indexes.length == 0) {return cb(null)}
 		let index = indexes.shift()
-		log(dir + '::' + index)
 		Fs.access(Path.resolve(dir, index), error => {
 			if (error) {return Exists()}
 			return cb(index)
